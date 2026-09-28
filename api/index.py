@@ -57,6 +57,7 @@ def gen_log():
 
 
 @app.route('/api/generate', methods=['GET', 'POST'])
+@app.route('/generate', methods=['GET', 'POST'])
 def generate():
     burst = request.args.get('burst') == '1'
     out = {"web_alerts": [], "network_alerts": [], "log_alerts": []}
@@ -66,3 +67,10 @@ def generate():
         if burst or random.random() < p:
             out[key].append(fn())
     return jsonify(out)
+import os
+from flask import send_file
+
+@app.route('/')
+def home():
+    here = os.path.dirname(os.path.abspath(__file__))
+    return send_file(os.path.join(here, '..', 'public', 'index.html'))
