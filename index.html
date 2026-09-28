@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EXFIL // WATCH</title>
+<style>
+:root{--bg:#0A0C10;--panel:#12151C;--raised:#171B24;--border:#232833;--text:#E6E9EF;--muted:#8891A3;--signal:#5EEAD4;--high:#FF5470;--medium:#FFB454;--low:#5EEAD4;--ok:#4ADE80}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+main{max-width:1300px;margin:0 auto;padding:26px 28px 40px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+h1{font-size:22px;margin:0 0 4px}
+.top p{margin:0;color:var(--muted);font-size:13px}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:20px;border:1px solid var(--border);background:var(--panel);font-size:12px;color:var(--muted)}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.pill.live{color:var(--signal);border-color:rgba(94,234,212,.3)}
+.pill.live i{background:var(--signal);animation:pulse 1.4s infinite}
+.pill.err{color:var(--high)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(94,234,212,.55)}70%{box-shadow:0 0 0 7px rgba(94,234,212,0)}100%{box-shadow:0 0 0 0 rgba(94,234,212,0)}}
+button{font:500 12.5px system-ui,sans-serif;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--raised);color:var(--text);cursor:pointer}
+button:hover{border-color:#3a4152}
+button:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.primary{background:var(--signal);color:#052421;border-color:var(--signal);font-weight:600}
+.danger{color:var(--high);border-color:rgba(255,84,112,.35)}
+.warn{color:var(--medium);border-color:rgba(255,180,84,.35)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px 18px}
+.card .label{font-size:11px;color:var(--muted);letter-spacing:.06em;margin-bottom:8px}
+.card .value{font-size:28px;font-weight:600}
+.card .value small{font-size:13px;color:var(--muted);font-weight:400}
+.c-high .value{color:var(--high)}.c-sig .value{color:var(--signal)}
+.boundary-wrap{margin-bottom:20px}
+.boundary-wrap h2{font-size:14px;margin:0 0 4px}
+.boundary-wrap .hint{font-size:11px;color:var(--muted);margin-bottom:12px}
+.boundary{position:relative;height:120px;border-radius:8px;border:1px solid var(--border);overflow:hidden;background:linear-gradient(90deg,rgba(94,234,212,.05),transparent 46%,transparent 54%,rgba(255,84,112,.05)),var(--raised)}
+.zone{position:absolute;top:10px;font-size:10px;letter-spacing:.09em;color:var(--muted)}
+.zone.l{left:14px}.zone.r{right:14px}
+.divider{position:absolute;left:50%;top:0;bottom:0;width:1px;background:repeating-linear-gradient(to bottom,var(--border) 0,var(--border) 5px,transparent 5px,transparent 10px)}
+.particle{position:absolute;width:7px;height:7px;border-radius:50%;box-shadow:0 0 10px 1px currentColor;animation:cross linear forwards}
+.particle span{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;white-space:nowrap;opacity:.85}
+@keyframes cross{0%{left:16px;opacity:0}12%{opacity:1}88%{opacity:1}100%{left:calc(100% - 24px);opacity:0}}
+.feeds{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.feed{display:flex;flex-direction:column;min-height:360px;max-height:480px;padding:0}
+.feed-head{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-bottom:1px solid var(--border)}
+.feed-head h3{margin:0;font-size:13px;display:flex;align-items:center;gap:8px}
+.feed-head h3 i{width:7px;height:7px;border-radius:50%}
+.count{font-size:10.5px;color:var(--muted);background:var(--raised);padding:2px 8px;border-radius:10px;border:1px solid var(--border)}
+.body{padding:10px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px}
+.empty{margin:auto;color:var(--muted);font-size:12px;text-align:center}
+.alert{border:1px solid var(--border);border-left:3px solid var(--border);border-radius:7px;padding:10px 12px;background:var(--raised);font-size:12.5px;line-height:1.5;word-break:break-word}
+.alert.high{border-left-color:var(--high)}.alert.medium{border-left-color:var(--medium)}.alert.low{border-left-color:var(--low)}
+.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px}
+.sev{font-size:9.5px;text-transform:uppercase;padding:2px 6px;border-radius:4px;font-weight:600}
+.sev.high{background:rgba(255,84,112,.14);color:var(--high)}
+.sev.medium{background:rgba(255,180,84,.14);color:var(--medium)}
+.sev.low{background:rgba(94,234,212,.1);color:var(--low)}
+.time{font-size:10px;color:var(--muted)}
+.dim{font-size:11px;color:var(--muted)}
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.chip{font-size:9.5px;padding:2px 6px;border-radius:4px;background:rgba(255,84,112,.1);color:#ff8fa3;border:1px solid rgba(255,84,112,.2)}
+.status{font-size:9.5px;padding:2px 6px;border-radius:4px;font-weight:600;display:inline-block;margin-top:6px}
+.status.BLOCKED{background:rgba(74,222,128,.12);color:var(--ok)}
+.status.ALLOWED{background:rgba(255,84,112,.12);color:var(--high)}
+@media(max-width:980px){.stats{grid-template-columns:repeat(2,1fr)}.feeds{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.particle,.pill.live i{animation:none}}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <h1>Data exfiltration detector</h1>
+      <p>Watching the boundary between internal systems and the outside world.</p>
+    </div>
+    <div class="controls">
+      <div class="pill mono" id="pill"><i></i><span id="statusText">Inactive</span></div>
+      <button class="primary" id="startBtn">Start monitoring</button>
+      <button class="danger" id="stopBtn">Stop</button>
+      <button class="warn" id="runBtn">Run detection</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+  </div>
+
+  <section class="stats">
+    <div class="card"><div class="label">TOTAL ALERTS</div><div class="value" id="sTotal">0</div></div>
+    <div class="card c-high"><div class="label">HIGH SEVERITY</div><div class="value" id="sHigh">0</div></div>
+    <div class="card"><div class="label">TRANSFERS BLOCKED</div><div class="value" id="sBlocked">0 <small>of 0 network events</small></div></div>
+    <div class="card c-sig"><div class="label">DATA CROSSED OUT</div><div class="value" id="sVolume">0.0 <small>MB observed</small></div></div>
+  </section>
+
+  <section class="card boundary-wrap">
+    <h2>The boundary</h2>
+    <div class="hint mono">Each dot is data trying to leave. Color shows severity.</div>
+    <div class="boundary" id="boundary">
+      <div class="zone mono l">INTERNAL</div><div class="zone mono r">EXTERNAL</div>
+      <div class="divider"></div>
+    </div>
+  </section>
+
+  <section class="feeds">
+    <div class="card feed"><div class="feed-head"><h3><i style="background:#FF5470"></i>Web alerts</h3><span class="count mono" id="webCount">0</span></div><div class="body" id="web"></div></div>
+    <div class="card feed"><div class="feed-head"><h3><i style="background:#FFB454"></i>Network alerts</h3><span class="count mono" id="netCount">0</span></div><div class="body" id="net"></div></div>
+    <div class="card feed"><div class="feed-head"><h3><i style="background:#5EEAD4"></i>Log alerts</h3><span class="count mono" id="logCount">0</span></div><div class="body" id="log"></div></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const color = { high: '#FF5470', medium: '#FFB454', low: '#5EEAD4' };
+let state = { web_alerts: [], network_alerts: [], log_alerts: [] };
+let timer = null;
+
+function setStatus(text, cls) {
+  $('statusText').textContent = text;
+  $('pill').className = 'pill mono ' + (cls || '');
+}
+
+function particle(size, sev) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.color = p.style.background = color[sev] || color.low;
+  const d = 1.6 + Math.random() * 1.2;
+  p.style.animationDuration = d + 's';
+  p.style.top = (30 + Math.random() * 55) + '%';
+  p.innerHTML = '<span class="mono">' + size + '</span>';
+  $('boundary').appendChild(p);
+  setTimeout(() => p.remove(), d * 1000 + 100);
+}
+
+const head = a => `<div class="row"><span class="sev ${a.severity}">${a.severity}</span><span class="time mono">${a.timestamp}</span></div>`;
+
+const views = {
+  web: a => `${head(a)}<b>${a.domain}</b><div class="dim mono">${a.url}</div><div class="chips">${a.leaks.map(l => `<span class="chip mono">${l}</span>`).join('')}</div>`,
+  net: a => `${head(a)}<b>${a.process_name}</b> <span class="dim mono">pid ${a.pid}</span><div class="dim mono">${a.remote_ip}:${a.remote_port} · ${a.protocol} · ${a.data_size}</div><span class="status mono ${a.transfer_status}">${a.transfer_status}</span>`,
+  log: a => `${head(a)}<div class="dim mono">${a.log_path}</div>${a.suspicious_line}<div class="chips">${a.leaks.map(l => `<span class="chip mono">${l.type}</span>`).join('')}</div>`
+};
+
+function renderFeed(id, countId, items, label) {
+  $(countId).textContent = items.length;
+  const box = $(id);
+  box.innerHTML = '';
+  if (!items.length) {
+    box.innerHTML = `<div class="empty mono">No ${label} alerts yet</div>`;
+    return;
+  }
+  items.slice().reverse().forEach(a => {
+    const d = document.createElement('div');
+    d.className = 'alert ' + a.severity;
+    d.innerHTML = views[id](a);
+    box.appendChild(d);
+  });
+}
+
+function render() {
+  const { web_alerts: w, network_alerts: n, log_alerts: l } = state;
+  renderFeed('web', 'webCount', w, 'web');
+  renderFeed('net', 'netCount', n, 'network');
+  renderFeed('log', 'logCount', l, 'log');
+  const all = [...w, ...n, ...l];
+  const blocked = n.filter(a => a.transfer_status === 'BLOCKED').length;
+  const mb = all.reduce((s, a) => s + (parseFloat(a.data_size) || 0), 0);
+  $('sTotal').textContent = all.length;
+  $('sHigh').textContent = all.filter(a => a.severity === 'high').length;
+  $('sBlocked').innerHTML = `${blocked} <small>of ${n.length} network events</small>`;
+  $('sVolume').innerHTML = `${mb.toFixed(1)} <small>MB observed</small>`;
+}
+
+async function fetchAlerts(burst) {
+  try {
+    const r = await fetch('/api/generate' + (burst ? '?burst=1' : ''));
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    ['web_alerts', 'network_alerts', 'log_alerts'].forEach(k => {
+      const fresh = data[k] || [];
+      fresh.forEach(a => particle(a.data_size, a.severity));
+      state[k] = state[k].concat(fresh).slice(-50);
+    });
+    render();
+    return true;
+  } catch (e) {
+    setStatus('Error: API not reachable', 'err');
+    return false;
+  }
+}
+
+$('startBtn').onclick = async () => {
+  if (timer) return;
+  setStatus('Live', 'live');
+  const ok = await fetchAlerts(false);
+  if (ok) timer = setInterval(() => fetchAlerts(false), 4000);
+};
+$('stopBtn').onclick = () => {
+  clearInterval(timer); timer = null;
+  setStatus('Inactive');
+};
+$('runBtn').onclick = () => fetchAlerts(true);
+$('clearBtn').onclick = () => {
+  state = { web_alerts: [], network_alerts: [], log_alerts: [] };
+  render();
+};
+render();
+</script>
+</body>
+</html>
