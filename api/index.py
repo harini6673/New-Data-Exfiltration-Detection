@@ -56,9 +56,9 @@ def gen_log():
             "data_size": f"{size}MB", "severity": sev, "timestamp": now()}
 
 
-@app.route('/api/generate', methods=['GET', 'POST'])
-@app.route('/generate', methods=['GET', 'POST'])
-def generate():
+@app.route('/', defaults={'path': ''}, methods=['GET', 'POST'])
+@app.route('/<path:path>', methods=['GET', 'POST'])
+def generate(path=''):
     burst = request.args.get('burst') == '1'
     out = {"web_alerts": [], "network_alerts": [], "log_alerts": []}
     for key, fn, p in (("web_alerts", gen_web, 0.5),
